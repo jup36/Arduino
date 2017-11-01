@@ -424,7 +424,7 @@ if(digA == 0) {
 
   //===========================================  
   if(isRecording) {
-    data = time + "," + varA + "," + varB + "," + varC + "," +  digA;
+    data = time + "," + varA + "," + varB + "," + varC;
     compTraj.println(data);
     compTraj.flush();
   }
