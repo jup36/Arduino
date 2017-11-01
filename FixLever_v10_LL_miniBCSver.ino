@@ -65,8 +65,8 @@ an output response.
 #define A7pin     21  // Analog in A7, IO 21
 #define PIN21     21
 #define DIO8      21
-#define Valve2pin   22  // Solenoid 2 pin
-#define Valve1pin   23  // Solenoid 1 pin
+#define Valve1pin   22  // Solenoid 1 pin
+#define Valve2pin   23  // Solenoid 2 pin
 #define ETH24pin  24  // reserved for Ethernet
 #define ETH25pin  25  // reserved for Ethernet
 #define ETH26pin  26  // reserved for Ethernet
