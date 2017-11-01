@@ -19,8 +19,8 @@ void RunSerialCom(int code) {
       Serial.print(",");
       Serial.print(CurrAIValue[3]);
       Serial.print(",");
-      Serial.print(digitalRead(digitalPins[0]));
-      Serial.print(",");
+      //Serial.print(digitalRead(digitalPins[0]));
+      //Serial.print(",");
       //Serial.print(digitalRead(digitalPins[1]));
       //Serial.print(",");
       //Serial.print(digitalRead(digitalPins[2]));
