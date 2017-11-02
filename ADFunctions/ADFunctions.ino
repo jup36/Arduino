@@ -1,3 +1,4 @@
+//TESTTESTTEST
 //// adcRead routine
 //uint16_t adcRead(uint8_t adc, uint8_t coding) {
 //  // adc = adc input, 0 - 7
