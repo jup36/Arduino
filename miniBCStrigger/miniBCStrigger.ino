@@ -164,12 +164,13 @@ void setup(void)
   pinMode(MOSIpin, OUTPUT);
   pinMode(MISOpin, INPUT);
   pinMode(MAXCVTpin, OUTPUT);
-
+  pinMode(DIOports[0], OUTPUT);
+  
   // set the extra Digital I/Os to inputs 
-  for( int i = 0; i < 11; i++)
-  {
-      pinMode( DIOports[i], INPUT_PULLUP);
-  }
+  //for( int i = 0; i < 11; i++)
+  //{
+  //    pinMode( DIOports[i], INPUT_PULLUP);
+  //}
   
   #ifdef USE_MAX11300
      MAX11300init();
@@ -209,8 +210,11 @@ void loop()
 // ================ PUSHBUTTONS ======================
   if( digitalRead(PB1pin) == LOW ) // low is pushed
   {
+     digitalWrite(DIO1, HIGH);
      Serial.println("PB1");
-     while( digitalRead(PB1pin) == LOW) delay(50); // wait until released
+     delay(50); // wait for a delay
+     digitalWrite(DIO1, LOW);
+     delay(1000); // wait for a delay 
   }   
 
 }  
