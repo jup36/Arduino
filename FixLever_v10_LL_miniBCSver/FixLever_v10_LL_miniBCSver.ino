@@ -206,7 +206,7 @@ void setup() {
         SPI.begin();     // set up SPI bus
     
         Serial1.begin(115200);       // USB coms
-        while(!Serial);             // wait for it to be ready
+        //while(!Serial);             // wait for it to be ready
         Serial.println("Hello!");   // and test 
 
         pinMode(PB1pin, INPUT_PULLUP);  // set up pushbuttons

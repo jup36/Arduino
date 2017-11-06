@@ -1,4 +1,3 @@
-
 // ==============================================
 //  This is an example sketch for the miniBCS with Teensy 3.5
 //  
@@ -131,9 +130,10 @@ void setup(void)
 {
   SPI.begin();     // set up SPI bus
     
-  Serial.begin(115200);         // USB coms
+  Serial.begin(115200);       // USB coms
   long unsigned serial_start = millis ();
   while (!Serial && ((millis () - serial_start) <= 2000));   // wait a bit for serial, but not forever if it is not connected
+  //while(!Serial);             // wait for it to be ready
   Serial.println("Hello!");   // and test 
 
   pinMode(PB1pin, INPUT_PULLUP);  // set up pushbuttons
@@ -185,7 +185,7 @@ void setup(void)
   lcd.setTextSize(1);
   lcd.setTextColor(BLACK);
   lcd.setCursor(25,2);
-  lcd.print("miniBCSb");  
+  lcd.print("miniBCSa");  
   lcd.setCursor(10,12); 
   lcd.print("VER:"); 
   lcd.print(VERSION);
@@ -206,15 +206,119 @@ uint16_t inputs;
 void loop()
 {
 
+// ================= TEENSY I/O ==================
+// All but the lower ten I/Os on the board connect directly to the Teensy 
+// These are good for I/Os that require speed or a specific pin feature (PWM, etc)
+
 // ================ PUSHBUTTONS ======================
   if( digitalRead(PB1pin) == LOW ) // low is pushed
   {
      Serial.println("PB1");
      while( digitalRead(PB1pin) == LOW) delay(50); // wait until released
   }   
+  if( digitalRead(PB2pin) == LOW ) 
+  {
+     Serial.println("PB2");
+     while( digitalRead(PB2pin) == LOW) delay(50);
+  }   
+  if( digitalRead(PB3pin) == LOW ) 
+  {
+     Serial.println("PB3");
+     while( digitalRead(PB3pin) == LOW) delay(50);
+  }  
 
-}  
+// ============== AUX I/O PORTS ====================
+// for testing, they are all inputs - see if they have changed
+// all have pullups, so = '1' with no connection
 
+  static int lastDIO[11];
+  int stat;
+
+  for( i = 0; i < 11; i++ )
+  {
+      if( (stat = digitalRead(DIOports[i])) != lastDIO[i] )
+      {
+         lastDIO[i] = stat;
+         Serial.print("Port ");
+         Serial.print(i+1);
+         Serial.print(" = ");
+         Serial.println(stat);
+      }
+       
+  }
+  
+
+// =========== VALVE DRIVERS  =========
+// - need a power source plugged into Solenoid Power
+//
+  unsigned long nowMillis = millis();
+   
+  if(nowMillis - lastMillis > RELAY_DELAY)
+  {
+      lastMillis = nowMillis;   
+ 
+      if (relayState == LOW)
+         relayState = HIGH;
+      else
+         relayState = LOW;
+      
+     digitalWrite(Valve1pin, relayState);
+     digitalWrite(Valve2pin, relayState);
+     digitalWrite(Valve3pin, relayState);
+  }
+
+
+  // ============== MAXIM CHIP I/O ===============
+  // the lower 10 I/Os on the board connect to a Maxim I/O chip
+  // they must be accessed via MAX11300 commands
+
+
+// ================ TOUCH INPUTS =========================
+
+  if( (inputs =  MAX11300read(0)) != touchIn)
+  {
+    touchIn = inputs & 0x3f;  // bits 0-5 are touch 
+    if( touchIn & DI1) Serial.print("D1 ");
+    if( touchIn & DI2) Serial.print("D2 ");
+    if( touchIn & DI3) Serial.print("D3 ");
+    if( touchIn & DI4) Serial.print("D4 ");
+    if( touchIn & DI5) Serial.print("D5 ");
+    if( touchIn & DI6) Serial.print("D6 ");
+    Serial.println("");
+  }    
+
+  // ================ PIEZO INPUT ===================
+
+   static uint16_t lastPiezoIn = 0;
+   uint16_t piezoIn = MAX11300readAnalog(PZ);
+   if( (piezoIn > lastPiezoIn + 4) || (lastPiezoIn > piezoIn + 4))
+   {
+      Serial.print("Piezo: ");
+      Serial.println(piezoIn);
+   }   
+   lastPiezoIn = piezoIn;   
+  
+  // ================ JOYSTICK INPUT ===================
+
+   static uint16_t lastX = 0;
+   static uint16_t lastY = 0;
+   uint16_t joystickX = MAX11300readAnalog(JSX);
+   uint16_t joystickY = MAX11300readAnalog(JSY);
+   if( (joystickX > lastX + 1) || (lastX > joystickX + 1))
+   {
+      Serial.print("Joystick X: ");
+      Serial.println(joystickX);
+   }   
+   lastX = joystickX;   
+   if( (joystickY > lastY + 1) || (lastY > joystickY + 1))
+   {
+      Serial.print("Joystick Y: ");
+      Serial.println(joystickY);
+   }   
+   lastY = joystickY;   
+   
+   delay(10);
+}
 
 
 
