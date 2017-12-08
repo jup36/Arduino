@@ -1,4 +1,3 @@
-// test2 just to test git pull
 
 import controlP5.*;
 import processing.serial.*;
@@ -13,6 +12,7 @@ than previously and make almost all modifications of the paradigm on the local m
 arduino code.
 
 This paradigm:
+Modified on Dec/17 to incorporate generation of digital pulses for laser stimulation on randomly selected trials at user defined percentage. 
 
 REMAINING ISSUES:
 
@@ -90,9 +90,12 @@ String mS="";
 String dS="";
 String data;
 
-int interTrialInterval = 1000;//1500;
+int interTrialInterval = 1000;//1500; (interTrialInterval is determined within 'FixLever_v10_LL_stim (see case 5)')
 int stimDelay = 0;//500
 int stimDuration = 0;//500;
+int stimSession = 1;  // global (session) laser stim logic; 0: do NOT use laser, 1: USE laser 
+int stimTrial   = 0;  // trial-by-trial laser stim logic; 0: stim OFF, 1: stim ON 
+int stimPerc  = 20;   // percent of trials to be stimulated (laser ON); e.g. 20 %
 int xCenter=  0;
 int xWidth = 20;
 int yCenter=  0;
@@ -100,18 +103,15 @@ int yWidth = 20;
 int boundaryWidth = 20;
 int valveOpenTime = 35;
 int valveOpenTimeX = 35; //30
-int valveOpenTimeY = 35;//30
+int valveOpenTimeY = 35; //30
 int valveDelayTime = 1000;
 int rightleft = int (random(1,3)); 
 
-//int [] thresholds = { 18,22,28,32}; //    
+//int [] thresholds = { 18,22,28,32};  
 //int [] thresholds = {10,16,13,20};
 //int [] thresholds = {30,30,30,30};
 //int [] thresholds = {31,40,46,40};
 int [] thresholds = {30,40,40,30};
-
-int stimType = 0;  // laser stim logic; 0: stim OFF, 1: stim ON 
-int stimPerc = 20; // percent of trials to be stimulated (laser ON); e.g. 20 %
 int blockType;
 boolean threshTask = false;
 
@@ -124,6 +124,7 @@ int switchTrial =int (random(50,90));
 int variable = 0;
 int omit = 0;
 int omittrial = 0;
+float randomdraw;
 
 //===========================================  
 // PREPARE THE SERIAL PORT
@@ -169,7 +170,6 @@ Numberbox ParamDisp7;
 Numberbox ParamDisp8;
 Numberbox ParamDisp9;
 Numberbox ParamDisp10;
-//Numberbox ParamDisp10;
 //===========================================
 
 //===========================================  
@@ -279,11 +279,11 @@ void setup() {
   fileLabelS.setText(fileSuffix+" ");
   //========================================  
   
-  // prepare the array of random values (0 to 1) to determine stim trials
-  float[] randoms = new float[100]; 
-  for (int i=0; i<100; i++) {
-      randoms[i] = random(100);
-  }
+  // prepare the array of random values (range: [0 1]) to determine stim trials
+  //float[] randoms = new float[100]; 
+  //for (int i=0; i<100; i++) {
+  //    randoms[i] = random(100);
+  //}
 
   //========================================  
   // Run once to initialize a bunch of variables in the display and get the current protocol name

@@ -69,9 +69,9 @@ void RunSerialCom(int code) {
 
     case 90: // start trial (i.e. need to read from the serial port)
       delay(10);
-      placeHolder = Serial.read();
+      stimTrial = Serial.read(); // stim trial logic
       delay(10);
-      placeHolder = Serial.read();
+      stimDelay = Serial.read(); // stim onset latency 
       delay(10);
       valveOpenTimeX = Serial.read();
       delay(10);
@@ -85,7 +85,7 @@ void RunSerialCom(int code) {
       delay(10);
       valveOpenTimeY = Serial.read(); // switch to be byte wise
       delay(10);
-      responseMode = Serial.read();
+      responseMode = Serial.read();   // 
       delay(10);
       valveDelayTmp = Serial.read();
       delay(10);

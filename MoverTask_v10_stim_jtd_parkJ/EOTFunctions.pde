@@ -69,14 +69,13 @@ void eot_parameter() {
   yWidth = int(ParamDisp6.value());
 
 
- // SWITCH TO THE STAIRCASE PARADIGM
- 
+  // SWITCH TO THE STAIRCASE PARADIGM
   blockType = floor(count/40); // each block comprises 40 trials by default
   
-  if (blockType>=4) { // terminate the session once four blocks completed 
+  if (blockType>=4) {  // terminate the session once four blocks completed 
     // session is complete
     println(blockType);
-    println(count);
+    println(count);    // trial count
     endSessionLogic = true;
   } else { // set params for the next trial
     println(blockType);
@@ -84,26 +83,30 @@ void eot_parameter() {
     yWidth = thresholds[blockType];
     xWidth = thresholds[blockType];
     
+    float rand = random(100); // draw a random number (type float) within the range of [0 100] 
+    if (rand <= stimPerc & stimSession == 1){ // stim logic for the next trial
+    stimTrial = 1; // stim
+    } else {
+    stimTrial = 0; // no stim
+    }
+  
     ParamDisp4.setValue(xWidth);
     ParamDisp6.setValue(yWidth);
+    
   }
   
   
 // FOR TARGET LEVER ////////////////////
-   rightleft = int (random(1,3));   
-int blockwise = 1;
-int [] targetDirection = {2,1,2,1,2,1,2,2,1,2,1,2,1};
+//   rightleft = int (random(1,3));   
+//int blockwise = 1;
+//int [] targetDirection = {2,1,2,1,2,1,2,2,1,2,1,2,1};
 
-if (blockwise == 1){
-  rightleft = targetDirection[blockType];
-}
-
-
-// FOR MITOMOVER ///////////////////////////////////////
-// FOR MITOMOVER ///////////////////////////////////////
+//if (blockwise == 1){
+//  rightleft = targetDirection[blockType];
+//}
   
-  paramWave[0] = stimDelay;
-  paramWave[1] = stimDuration;
+  paramWave[0] = stimTrial; // stim trial logic
+  paramWave[1] = stimDelay; // stim trial latency
   paramWave[2] = valveOpenTimeX;
   paramWave[3] = xCenter;
   paramWave[4] = xWidth;
@@ -124,9 +127,6 @@ if (blockwise == 1){
   ParamDisp8.setValue(valveDelayTime);
 //  ParamDisp9.setValue(responseMode);
 }
-
-
-
 
 //===========================================
 //===========================================

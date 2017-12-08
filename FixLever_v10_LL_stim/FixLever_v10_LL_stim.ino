@@ -1,7 +1,9 @@
-/* test
+/*
 fixLeverOp
 Behavioral task waits for a serial command to begin trials and looks for some movement of a joystick to trigger
 an output response.
+Modified on Dec/17 to incorporate generation of digital pulses for laser stimulation on randomly selected trials at user defined percentage. 
+
 */
 
 //// include the library code:
@@ -13,7 +15,7 @@ an output response.
 #define SOLENOID1 22
 #define ADC_PIN   49
 #define DAC_PIN   48
-
+#define LASER     3  // currently connected to a BNC channel in BCS
 
 //=======================
 // Set the protocol name
@@ -25,7 +27,7 @@ unsigned long loopTime;
 //=======================
 // set pin numbers for relevant inputs and outputs:
 int analogPins[] = {0,1,2,3};
-int digitalPins[] = {4,5,6,7,8,41,43,45,36,38,39,40};
+int digitalPins[] = {3,4,5,6,7,8,41,43,45,36,38,39,40}; // added digitalPin 3 that is connected/valid on the BCS to trigger laser (12/7)
 //=======================
 
 //=======================
@@ -48,6 +50,7 @@ int bufferLoc = 0;
 unsigned long interTrialInterval = 500;//15000;
 unsigned long stimDelay = 0;//500;
 unsigned long stimDuration = 0;//500;
+int stimTrial = 0;  // laser stim logic; 0: stim OFF, 1: stim ON
 unsigned long valveOpenTime = 15;
 unsigned long valveOpenTimeX = 30;
 unsigned long valveOpenTimeY = 30;
@@ -57,9 +60,10 @@ int xCenter = 0;
 int xWidth = 10;
 int yCenter = 0;
 int yWidth = 10;
-int responseMode = 3;
+int responseMode = 0;
 int leftTrial = 0;
 int valveDelayTmp = 0;
+
 //=======================
 
 //=======================
@@ -67,6 +71,7 @@ int valveDelayTmp = 0;
 unsigned long time; // all values that will do math with time need to be unsigned long datatype
 unsigned long crossTime = 0;
 unsigned long rewardDelivered = 0;
+unsigned long stimTime; // LASER onset time
 boolean firstLickLogic = false;
 unsigned long trialEnd = 0;
 unsigned long trialStart = 0;
@@ -76,9 +81,12 @@ int testMode = 0;
 int jsZeroX = 512;
 int jsZeroY = 512;
 int xDisp = 0;
-int yDisp=0;
+int yDisp = 0;
+int xDispS = 0;
+int yDispS = 0;
 int count = 0;
 long displacement = 0;
+boolean success = false; // signal whether reach should be rewarded 
 //=======================
 
 //=======================
@@ -126,6 +134,8 @@ void setup() {
         digitalWrite(28, HIGH);     
         pinMode(SOLENOID1, OUTPUT);
         digitalWrite(SOLENOID1, LOW);
+        pinMode(LASER, OUTPUT);
+        digitalWrite(LASER, LOW);
       //=======================
 
       //=======================
@@ -147,20 +157,19 @@ void setup() {
     //=======================
     // initialize SERIAL for LCD
       Serial1.begin(19200); 
-    Serial1.write(byte(0x0c));   //clear display
-    delay(5);
-  Serial1.write(byte(0x11));   // Back-light on
-  Serial1.write(byte(0x80));   // col 0, row 0
-  Serial1.print(protocolName); // print protocol name
+      Serial1.write(byte(0x0c));   //clear display
+      delay(5);
+      Serial1.write(byte(0x11));   // Back-light on
+      Serial1.write(byte(0x80));   // col 0, row 0
+      Serial1.print(protocolName); // print protocol name
     //=======================
   
     //=======================
-      // initialize zero positions
-        jsZeroX = analogRead(0);
-        jsZeroY = analogRead(1);
-      //=======================
+    // initialize zero positions
+       jsZeroX = analogRead(0);
+       jsZeroY = analogRead(1);
+    //=======================
 
-      
       count = 0; // initialize the trial counter
       
       //=======================
@@ -174,8 +183,8 @@ void setup() {
       bufferLoc = 0;
       //=======================
       
-      CurrAIValue[0] = analogRead(0);
-      CurrAIValue[1] = analogRead(1);
+      CurrAIValue[0] = analogRead(0); // x position
+      CurrAIValue[1] = analogRead(1); // y position
       CurrAIValue[2] = analogRead(2);
       CurrAIValue[3] = analogRead(3);
       
@@ -192,31 +201,26 @@ void loop() {
 
       if(frozen==0) {
         // Left shift the buffer
-          for (int i=1;i<bufferLength;i++) {
+          for (int i=1;i<20;i++) { // i<bufferLength
             bufferAI0[i-1] = bufferAI0[i];
             bufferAI1[i-1] = bufferAI1[i];
           }
-          
-          bufferAI0[bufferEndIndex] = int(analogRead(0)); // joystick x ... takes 110us
-          bufferAI1[bufferEndIndex] = int(analogRead(1)); // joystick y
-      
-      // this could be a more complicated function of past values (e.g. to implement a filter)      
-//          CurrAIValue[0] = (bufferAI0[bufferEndIndex] + bufferAI0[bufferEndIndex-1]) / 2; 
-//          CurrAIValue[1] = (bufferAI1[bufferEndIndex] + bufferAI1[bufferEndIndex-1]) / 2;
-          CurrAIValue[0] = bufferAI0[bufferEndIndex]; 
-          CurrAIValue[1] = bufferAI1[bufferEndIndex];
-      }
-      
-      
-      CurrAIValue[3] = digitalRead(BEAM1); // lick port
 
-      if(CurrAIValue[3]<lThresh) {
-        digitalWrite(digitalPins[4], HIGH); // signal a lick
-        if(firstLickLogic) {
-         firstLickTime = time;
-         firstLickLogic = false; 
-        }
-      }    
+          prevXDisp = int(( bufferAI0[0] + bufferAI0[1] + bufferAI0[2] ) / 3); // average of x samples - 3 samples back
+          prevYDisp = int(( bufferAI1[0] + bufferAI1[1] + bufferAI1[2] ) / 3); // average of y samples - 3 samples back 
+
+          CurrAIValue[0] = analogRead(0); // gather new current x position
+          CurrAIValue[1] = analogRead(1); // gather new current y position
+          CurrAIValue[3] = digitalRead(BEAM1);  // lick port
+
+          if(CurrAIValue[3]<lThresh) {
+            digitalWrite(digitalPins[4], HIGH); // signal a lick
+            if(firstLickLogic) {
+              firstLickTime = time;
+              firstLickLogic = false; 
+            }
+          }    
+      }
     
 
       switch (ParadigmMode) {
@@ -249,79 +253,46 @@ void loop() {
 
             switch(responseMode) {     
               case 0:
-                xDisp = abs(CurrAIValue[0]-jsZeroX);
-                yDisp = abs(CurrAIValue[1]-jsZeroY);
-                if (xDisp>xWidth || yDisp>yWidth) {
-                  
-                  frozen = 0;        
-                  crossTime = time;
-                  firstLickLogic = true;
-                  digitalWrite(digitalPins[1], HIGH);  // success event pulse
-                  digitalWrite(digitalPins[0], LOW); // trial cue 
-                  digitalWrite(digitalPins[6], HIGH); // performance cue indicator to send to the recording system
-                  ParadigmMode = 3;
-                  Serial1.write(byte(0x0c));   // clear the display
-            Serial1.write(byte(0x94));  
-                  Serial1.print("EVENT");
-                }
-                break;
-              
-                
-              case 1:
-                xDisp = (CurrAIValue[0]-jsZeroX);
-                yDisp = (CurrAIValue[1]-jsZeroY);
-                if (xDisp > (xCenter-xWidth) && xDisp < (xCenter+xWidth)) {
-                  if (yDisp > (yCenter-yWidth) && yDisp < (yCenter+yWidth)) {
-                    valveOpenTime =valveOpenTimeX;
-                    frozen = 0;        
-                    crossTime = time;
-                    firstLickLogic = true;
-                    digitalWrite(digitalPins[1], HIGH);  // success event pulse
-                    analogWrite(digitalPins[2], 255);
-                    digitalWrite(digitalPins[0], LOW); // trial cue 
-                    digitalWrite(digitalPins[6], HIGH); // performance cue indicator to send to the recording system
-                    ParadigmMode = 3;
+                xDisp = abs(CurrAIValue[0]-jsZeroX);     // find X displacement of sample in relation to start of reach
+                yDisp = abs(CurrAIValue[1]-jsZeroY);     // find Y displacement of sample in relation to start of reach
+                xDispS = abs(prevXDisp-jsZeroX);         // find X displacement of previous samples in relation to start of reach
+                yDispS = abs(prevYDisp-jsZeroY);         // find Y displacement of previous samples in relation to start of reach
+
+                if (xDisp>10 || yDisp>10) {  // if exceeds low velocity threshold and it is stimTrial 1
+                  if (stimTrial==1) { // stimTrial logic (0: no stim, 1: stim, to be serial communicated)
+                    digitalWrite(LASER, HIGH);           // stimulate; LASER ON
+                    //digitalWrite(digitalPins[3], HIGH); 
+                    stimTrial = 0; 
+                    stimTime = time; 
                   }
                 }
-                break;
-              
-              case 2:
-                frozen = 0;        
-                crossTime = time;
-                firstLickLogic = true;
-                digitalWrite(digitalPins[1], HIGH);  // success event pulse
-                analogWrite(digitalPins[2], 255);
-                digitalWrite(digitalPins[0], LOW); // trial cue 
-                digitalWrite(digitalPins[6], HIGH); // performance cue indicator to send to the recording system
-                ParadigmMode = 3;
-                break;
-  
-              case 3:
-                if (xDisp>xWidth)  {
-                  valveOpenTime = valveOpenTimeX;
-                  frozen = 0;        
-                  crossTime = time;
-                  firstLickLogic = true;
-                  leftTrial = 1;
-                  digitalWrite(digitalPins[1], HIGH);  // success event pulse
-                  analogWrite(digitalPins[2], 255);
-                  digitalWrite(digitalPins[0], LOW); // trial cue 
-                  digitalWrite(digitalPins[6], HIGH); // performance cue indicator to send to the recording system
-                  ParadigmMode = 3;
+
+                if(!success) { // if success = false, then start sampling to see if can be true
+
+                  if (xDisp > xWidth & xDispS < xWidth) {         // if moving out from center (make sure current sample is larger than previous)
+                    crossTime = time;                             // mark cross time to check if the next buff samples go above upper threshold
+                    success   = true;                             // for the time being, success = true
+                  }
+                  if (yDisp > yWidth & yDispS < yWidth) {         // if moving out from center (make sure current sample is larger than previous)
+                    crossTime = time;                             // mark cross time to check if the next buff samples go above upper threshold
+                    success   = true;                             // for the time being, success = true
+                  }
+                
+                } else { // when success is true
+                    frozen = 0;        
+                    firstLickLogic = true;
+                    digitalWrite(digitalPins[1], HIGH); // success event pulse
+                    digitalWrite(digitalPins[0], LOW);  // trial cue 
+                    digitalWrite(digitalPins[6], HIGH); // performance cue indicator to send to the recording system
+                    ParadigmMode = 3;
+                    Serial1.write(byte(0x0c));   // clear the display
+                    Serial1.write(byte(0x94));  
+                    Serial1.print("EVENT");
+                    success = false;      // reset success to false
                 }
-                if (xDisp<-xWidth)  {
-                  valveOpenTime = valveOpenTimeY;
-                  frozen = 0;        
-                  crossTime = time;
-                  firstLickLogic = true;
-                  leftTrial = 0;
-                  digitalWrite(digitalPins[1], HIGH);  // success event pulse
-                  analogWrite(digitalPins[2], 255);
-                  digitalWrite(digitalPins[0], LOW); // trial cue 
-                  digitalWrite(digitalPins[6], HIGH); // performance cue indicator to send to the recording system
-                  ParadigmMode = 3;
-                }
-              break;
+          
+                break;
+           
             }
             
             break;
@@ -341,13 +312,13 @@ void loop() {
             }
             
             if(time > (crossTime+valveDelayTime) ) {
-              digitalWrite(SOLENOID1, HIGH);  // valve opens
+              digitalWrite(SOLENOID1, HIGH);      // valve opens
               rewardDelivered = time;
               digitalWrite(digitalPins[7], HIGH); // trial cue indicator to send to the recording system
               ParadigmMode = 4;              
-                  Serial1.write(byte(0x0c));   // clear the display
-            Serial1.write(byte(0x94));  
-                  Serial1.print("REWARD");
+              Serial1.write(byte(0x0c));      // clear the display
+              Serial1.write(byte(0x94));  
+              Serial1.print("REWARD");
             }
 
             break;
@@ -367,9 +338,9 @@ void loop() {
             if(time > (crossTime+valveDelayTime+valveOpenTime) ) {
               digitalWrite(SOLENOID1, LOW);  // valve closes
               ParadigmMode = 5;              
-                 Serial1.write(byte(0x0c));   // clear the display
-            Serial1.write(byte(0x94));  
-                  Serial1.print("POST-REWARD");
+              Serial1.write(byte(0x0c));   // clear the display
+              Serial1.write(byte(0x94));  
+              Serial1.print("POST-REWARD");
             }      
 
             break;
@@ -381,7 +352,7 @@ void loop() {
               first = 1;
             }
             
-            if ( time-rewardDelivered>3000 ) {
+            if ( time-rewardDelivered>3000 ) { // this must keep iti
               
               if (first==0) {
                 trialEnd = 3000+crossTime;
@@ -398,7 +369,7 @@ void loop() {
 
               ParadigmMode = 0;
              Serial1.write(byte(0x0c));   // clear the display
-            Serial1.write(byte(0x94));  
+             Serial1.write(byte(0x94));  
               count++;
               
             }
@@ -468,6 +439,14 @@ void loop() {
     digitalWrite(digitalPins[5], LOW); // 
     digitalWrite(digitalPins[6], LOW); // 
     digitalWrite(digitalPins[7], LOW); // 
+
+    // turn the LASER STIM OFF
+    if (time > stimTime+450) {      // turn the laser off after 450 ms (laser stim duration: 450 ms) 
+      digitalWrite(LASER, LOW);     // stim for stimDuration length (currently 450 ms)
+      digitalWrite(digitalPins[3], LOW);
+      stimTime = 0; 
+    }
+    
 }
 
 
