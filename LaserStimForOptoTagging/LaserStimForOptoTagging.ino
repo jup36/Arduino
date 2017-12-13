@@ -1,7 +1,7 @@
 /*
 Spontaneous stimulation for opto-tagging.
-Activate stim avoiding time of joystick movement.  
-
+Activate stim avoiding time of joystick movement moments.
+Generates user-defined number of stimulations of a user-defined duration at user-defined inter-stimulus interval. 
 */
 
 #define LASER     3  // digital pin 3 currently connected to a BNC channel in BCS
@@ -36,6 +36,7 @@ int bufferAI3[100];
 // PARAMETERS OF TASK
 unsigned long interStimInterval = 10000; // inter-stimulation interval, default = 10000 ms 
 unsigned long stimDuration = 500;        // stim-duration, default = 500 ms
+unsigned long stimNumb     = 10; // the number of stimulations to be generated
 int xCenter = 0;
 int xWidth = 10;
 int yCenter = 0;
@@ -58,7 +59,6 @@ int prevYDisp = 0;
 int xDispS = 0;
 int yDispS = 0;
 int count = 0;
-boolean success = false;
 boolean stimActive = false; // logic to control stim active or not
 //=======================
 
@@ -135,11 +135,11 @@ void loop() {
             jsZeroX = CurrAIValue[0]; // X0
             jsZeroY = CurrAIValue[1]; // Y0
             
-            if (count==0) { // for the first trial 
+            if (count<1) { // for the first trial 
               stimActive = true;  // activate the stim logic 
               ParadigmMode = 1;   // just go to the stim block and see if stim can be delivered 
             } else {
-              if (time > stimTime + interStimInterval) {
+              if (time > stimTime + interStimInterval && stimActive == true) {
                 ParadigmMode = 1; // go to the stim block once interStimInterval elapsed since the last stim trial
               }
             }
@@ -161,7 +161,7 @@ void loop() {
         case 2: // TRIAL END BLOCK; 
                 
                 ParadigmMode = 0;
-                count++;
+                count=count+1;
                 Serial.print(count); // to monitor the number of stimulation given through the serial monitor
         break;
       }
@@ -175,12 +175,11 @@ void loop() {
       // turn the LASER STIM OFF
       if (time > stimTime+stimDuration) { // turn the laser off after stimDuration has elapsed (laser stim duration: 500 ms) 
         digitalWrite(LASER, LOW);         // stim for stimDuration length (currently 450 ms)
-        stimTime = 0; 
+        stimActive = false; 
       }
 
-      if (time > stimTime+interStimInterval && count < 10){ // this also is to prevent continuous stim, but it also allows to stim again after isi elapses
+      if (time > stimTime+stimDuration+interStimInterval && count < stimNumb){ // this also is to prevent continuous stim, but it also allows to stim again after isi elapses
         stimActive = true;
       }   
 
 } // END OF LOOP
-
