@@ -51,6 +51,7 @@ unsigned long interTrialInterval = 500;//15000;
 unsigned long stimDelay = 0;//500;
 unsigned long stimDuration = 0;//500;
 int stimTrial = 0;  // laser stim logic; 0: stim OFF, 1: stim ON
+boolean stimActive = false; // internal (not serial communicated) logic to prevent continuous stim. 
 unsigned long valveOpenTime = 15;
 unsigned long valveOpenTimeX = 30;
 unsigned long valveOpenTimeY = 30;
@@ -266,11 +267,12 @@ void loop() {
                 //yDispS = abs(prevYDisp-jsZeroY);         // find Y displacement of previous samples in relation to start of reach
 
                 if (xDisp>10 || yDisp>10) {  // if exceeds low velocity threshold and it is stimTrial 1
-                  if (stimTrial==1) { // stimTrial logic (0: no stim, 1: stim, to be serial communicated)
+                  if (stimTrial==1 && stimActive==true) { // stimTrial logic (0: no stim, 1: stim, to be serial communicated)
                     digitalWrite(LASER, HIGH);           // stimulate; LASER ON
                     //digitalWrite(digitalPins[3], HIGH); 
                     //stimTrial = 0; 
                     stimTime = time; 
+                    stimActive = false; // make stim inactive to prevent continuous stim. 
                   }
                 }
 
@@ -321,7 +323,7 @@ void loop() {
               Serial1.write(byte(0x94));  
               Serial1.print("REWARD");
             }
-
+            
             break;
     
         case 4: // close valve once the reward has had sufficient time to be delivered
@@ -367,7 +369,9 @@ void loop() {
               // defrost the recording buffer
               frozen = 0;
               first = 0;
-
+              
+              stimActive = true; // convert stimActive back to true to let stim possible in the next trial
+              
               ParadigmMode = 0;
              Serial1.write(byte(0x0c));   // clear the display
              Serial1.write(byte(0x94));  
@@ -445,7 +449,11 @@ void loop() {
     if (time > stimTime+450) {      // turn the laser off after 450 ms (laser stim duration: 450 ms) 
       digitalWrite(LASER, LOW);     // stim for stimDuration length (currently 450 ms)
       digitalWrite(digitalPins[3], LOW);
-      stimTime = 0; 
+      //stimTime = 0; 
+    }
+    
+    if (time > stimTime+3000){ // this also is to prevent continuous stim, but it also allows to stim again after 3 sec elapsed from the last stim onset
+      stimActive = true;
     }
     
 }
