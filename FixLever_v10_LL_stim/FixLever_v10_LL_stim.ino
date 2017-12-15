@@ -273,6 +273,7 @@ void loop() {
                     //stimTrial = 0; 
                     stimTime = time; 
                     stimActive = false; // make stim inactive to prevent continuous stim. 
+                    ParadigmMode = 1;   // returning back to paradigmmode 1 would prevent repeating laser stim for static low displacement 
                   }
                 }
 
