@@ -1,4 +1,5 @@
 /*
+THIS IS A BRANCH TO INTRODUCE A CONSTANT DIGITAL PULSES FOR STIM-THRESHOLD CROSSING. 
 fixLeverOp
 Behavioral task waits for a serial command to begin trials and looks for some movement of a joystick to trigger
 an output response.
@@ -15,7 +16,8 @@ Modified on Dec/17 to incorporate generation of digital pulses for laser stimula
 #define SOLENOID1 22
 #define ADC_PIN   49
 #define DAC_PIN   48
-#define LASER     3  // currently connected to a BNC channel in BCS
+#define LASER     3    // signals laser delivery
+#define pseudoLaser 21 // signals pseudoLaser delivery (crossing of the laser trigger threshold)
 
 //=======================
 // Set the protocol name
@@ -139,6 +141,8 @@ void setup() {
         digitalWrite(SOLENOID1, LOW);
         pinMode(LASER, OUTPUT);
         digitalWrite(LASER, LOW);
+        pinMode(pseudoLaser, OUTPUT);
+        digitalWrite(pseudoLaser, LOW);
       //=======================
 
       //=======================
@@ -266,18 +270,22 @@ void loop() {
                 //xDispS = abs(prevXDisp-jsZeroX);         // find X displacement of previous samples in relation to start of reach
                 //yDispS = abs(prevYDisp-jsZeroY);         // find Y displacement of previous samples in relation to start of reach
 
-                if (xDisp>10 || yDisp>10) {  // if exceeds low velocity threshold and it is stimTrial 1
-                  if (stimTrial==1 && stimActive==true) { // stimTrial logic (0: no stim, 1: stim, to be serial communicated)
-                    digitalWrite(LASER, HIGH);           // stimulate; LASER ON
-                    //digitalWrite(digitalPins[3], HIGH); 
-                    //stimTrial = 0; 
-                    stimTime = time; 
+                if (xDisp>10 || yDisp>10) {  // if exceeds low velocity threshold and it is stimTrial 1                  
+                  if (stimActive==true){ // if stim is not refractory
+                   if (stimTrial==1){ // if current trial is a stim trial
+                    digitalWrite(LASER, HIGH); // stimulate; LASER ON
+                    stimTime = time;    // mark stim activation time
                     stimActive = false; // make stim inactive to prevent continuous stim. 
-                    ParadigmMode = 1;   // returning back to paradigmmode 1 would prevent repeating laser stim for static low displacement 
+                    ParadigmMode = 1;   // returning back to paradigmmode 1 would prevent repeating laser stim for static low displacement            
+                   } else { // if not a stim trial
+                    digitalWrite(pseudoLaser, HIGH);     // trigger a low-threshold crossing signal
+                    stimTime = time;    // mark stim activation time 
+                    stimActive = false; // make stim inactive to prevent continuous signaling. 
+                    ParadigmMode = 1;   // returning back to paradigmmode 1 would prevent repeating laser stim for static low displacement                   
+                   }
                   }
                 }
-
-               
+                 
                if (xDisp>xWidth || yDisp>yWidth) {         // if moving out from center (make sure current sample is larger than previous)
                    crossTime = time;                             // mark cross time to check if the next buff samples go above upper threshold
                    //success   = true;                             // for the time being, success = true
@@ -449,8 +457,7 @@ void loop() {
     // turn the LASER STIM OFF
     if (time > stimTime+450) {      // turn the laser off after 450 ms (laser stim duration: 450 ms) 
       digitalWrite(LASER, LOW);     // stim for stimDuration length (currently 450 ms)
-      digitalWrite(digitalPins[3], LOW);
-      //stimTime = 0; 
+      digitalWrite(pseudoLaser, LOW); // turn the pseudoLaser stim off
     }
     
     if (time > stimTime+3000){ // this also is to prevent continuous stim, but it also allows to stim again after 3 sec elapsed from the last stim onset
