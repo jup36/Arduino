@@ -276,12 +276,12 @@ void loop() {
                     digitalWrite(LASER, HIGH); // stimulate; LASER ON
                     stimTime = time;    // mark stim activation time
                     stimActive = false; // make stim inactive to prevent continuous stim. 
-                    ParadigmMode = 1;   // returning back to paradigmmode 1 would prevent repeating laser stim for static low displacement            
+                    //ParadigmMode = 1;   // returning back to paradigmmode 1 would prevent repeating laser stim for static low displacement            
                    } else { // if not a stim trial
                     digitalWrite(pseudoLaser, HIGH);     // trigger a low-threshold crossing signal
                     stimTime = time;    // mark stim activation time 
                     stimActive = false; // make stim inactive to prevent continuous signaling. 
-                    ParadigmMode = 1;   // returning back to paradigmmode 1 would prevent repeating laser stim for static low displacement                   
+                    //ParadigmMode = 1;   // returning back to paradigmmode 1 would prevent repeating laser stim for static low displacement                   
                    }
                   }
                 }
