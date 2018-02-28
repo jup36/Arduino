@@ -3,7 +3,6 @@ fixLeverOp
 Behavioral task waits for a serial command to begin trials and looks for some movement of a joystick to trigger
 an output response.
 Modified on Dec/17 to incorporate generation of digital pulses for laser stimulation on randomly selected trials at user defined percentage. 
-
 */
 
 //// include the library code:
@@ -273,7 +272,7 @@ void loop() {
                     //stimTrial = 0; 
                     stimTime = time; 
                     stimActive = false; // make stim inactive to prevent continuous stim. 
-                    ParadigmMode = 1;   // returning back to paradigmmode 1 would prevent repeating laser stim for static low displacement 
+                    //ParadigmMode = 1;   // returning back to paradigmmode 1 would prevent repeating laser stim for static low displacement 
                   }
                 }
 
