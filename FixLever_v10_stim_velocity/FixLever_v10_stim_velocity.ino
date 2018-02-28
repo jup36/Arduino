@@ -77,6 +77,7 @@ boolean firstLickLogic = false;
 unsigned long trialEnd = 0;
 unsigned long trialStart = 0;
 unsigned long firstLickTime = 0;
+unsigned long prepTime = 0; // this will be used as pseudo-reachStart time to calculate reach velocity (sqrt(xDisp^2+yDisp^2)/(crossTime-prepTime))
 int ParadigmMode = 0;
 int testMode = 0;
 int jsZeroX = 512;
@@ -88,6 +89,8 @@ int prevYDisp = 0;
 int xDispS = 0;
 int yDispS = 0;
 int count = 0;
+int currVelocity = 0;  // continuously updating velocity data to be used for velocity-based closed-loop stimulation 
+int crossVelocity = 0; // velocity at time of threshold crossing 
 long displacement = 0;
 boolean success = false; // signal whether reach should be rewarded 
 //=======================
@@ -215,12 +218,9 @@ void loop() {
           CurrAIValue[0] = bufferAI0[bufferEndIndex]; 
           CurrAIValue[1] = bufferAI1[bufferEndIndex];
       }
-          //prevXDisp = int(( bufferAI0[0] + bufferAI0[1] + bufferAI0[2] ) / 3); // average of x samples - 3 samples back
-          //prevYDisp = int(( bufferAI1[0] + bufferAI1[1] + bufferAI1[2] ) / 3); // average of y samples - 3 samples back 
-
-          //CurrAIValue[0] = analogRead(0); // gather new current x position
-          //CurrAIValue[1] = analogRead(1); // gather new current y position
-      CurrAIValue[3] = digitalRead(BEAM1);  // lick port
+          prevXDisp = int(( bufferAI0[0] + bufferAI0[1] + bufferAI0[2] ) / 3); // average of x samples - 3 samples back
+          prevYDisp = int(( bufferAI1[0] + bufferAI1[1] + bufferAI1[2] ) / 3); // average of y samples - 3 samples back 
+          prepTime = time; // time to be used for pseudo-reachStart (reach preparation) - it might be most reasonable, as (currDisplacement-prevDisplacement) will be used to compute velocity
 
        if(CurrAIValue[3]<lThresh) {
          digitalWrite(digitalPins[4], HIGH); // signal a lick
@@ -230,7 +230,6 @@ void loop() {
          }
        }    
         
-
       switch (ParadigmMode) {
       
         case 0: // just idle in this state waiting for controller to start next trial
@@ -261,15 +260,18 @@ void loop() {
 
             switch(responseMode) {     
               case 0:
-                xDisp = abs(CurrAIValue[0]-jsZeroX);     // find X displacement of sample in relation to start of reach
-                yDisp = abs(CurrAIValue[1]-jsZeroY);     // find Y displacement of sample in relation to start of reach
-                //xDispS = abs(prevXDisp-jsZeroX);         // find X displacement of previous samples in relation to start of reach
-                //yDispS = abs(prevYDisp-jsZeroY);         // find Y displacement of previous samples in relation to start of reach
+                xDispS = abs(prevXDisp-jsZeroX);     // find X displacement of previous samples in relation to start of reach
+                yDispS = abs(prevYDisp-jsZeroY);     // find Y displacement of previous samples in relation to start of reach
+                xDisp = abs(CurrAIValue[0]-jsZeroX); // find X displacement of sample in relation to start of reach
+                yDisp = abs(CurrAIValue[1]-jsZeroY); // find Y displacement of sample in relation to start of reach
 
+                //currVelocity = int(sqrt((CurrAIValue[0]-prevXDisp)^2 + (CurrAIValue[1]-prevYDisp)^2)/(time-prepTime)); // compute velocity to be used for velocity-based closed-loop stimulation 
+                currVelocity = int(sqrt((CurrAIValue[0]-prevXDisp)^2 + (CurrAIValue[1]-prevYDisp)^2)); // compute velocity to be used for velocity-based closed-loop stimulation 
+                // It might be a better idea to avoid deviding with time - which should be constantly small value (to avoid deviding with a extremely small value)
+                
                 if (xDisp>10 || yDisp>10) {  // if exceeds low velocity threshold and it is stimTrial 1
                   if (stimTrial==1 && stimActive==true) { // stimTrial logic (0: no stim, 1: stim, to be serial communicated)
-                    digitalWrite(LASER, HIGH);           // stimulate; LASER ON
-                    //digitalWrite(digitalPins[3], HIGH); 
+                    digitalWrite(LASER, HIGH);            // stimulate; LASER ON
                     //stimTrial = 0; 
                     stimTime = time; 
                     stimActive = false; // make stim inactive to prevent continuous stim. 
@@ -277,11 +279,9 @@ void loop() {
                   }
                 }
 
-               
-               if (xDisp>xWidth || yDisp>yWidth) {         // if moving out from center (make sure current sample is larger than previous)
-                   crossTime = time;                             // mark cross time to check if the next buff samples go above upper threshold
-                   //success   = true;                             // for the time being, success = true
-
+                if (xDisp>xWidth || yDisp>yWidth) { // if moving out from center (make sure current sample is larger than previous)
+                   crossTime = time;   // mark cross time to check if the next buff samples go above upper threshold
+                   crossVelocity = currVelocity; // velocity at crossing of the threshold (to be serial-communicated) 
                    frozen = 0;        
                    valveOpenTime = valveOpenTimeY;
                    firstLickLogic = true;
@@ -397,7 +397,6 @@ void loop() {
            
             digitalWrite(digitalPins[0], LOW); // success event
             digitalWrite(digitalPins[1], LOW); // trial cue light
-//            digitalWrite(digitalPins[2], LOW); // performance cue light
             digitalWrite(digitalPins[3], LOW); // valve
             digitalWrite(digitalPins[4], LOW); // reset the lick indicator
             break;

@@ -7,17 +7,17 @@ void RunSerialCom(int code) {
        
   switch (code) {
     
-    case 87: // data has been requested
+    case 87: // data has been requested (continuous stream data)
       // Current settings allow for 4 8-bit digital lines ("AO") and 12 1-bit digital lines ("DO")
       Serial.print(1);
       Serial.print(",");
-      Serial.print(CurrAIValue[0]-jsZeroX);
+      Serial.print(CurrAIValue[0]-jsZeroX); // current x displacement
       Serial.print(",");
-      Serial.print(CurrAIValue[1]-jsZeroY);
+      Serial.print(CurrAIValue[1]-jsZeroY); // current y displacement 
       Serial.print(",");
-      Serial.print(CurrAIValue[2]);
+      Serial.print(currVelocity);  // current velocity, currVelocity = int(sqrt((CurrAIValue[0]-prevXDisp)^2 + (CurrAIValue[1]-prevYDisp)^2)); 
       Serial.print(",");
-      Serial.print(CurrAIValue[3]);
+      Serial.print(crossVelocity); // cross velocity, velocity at crossing of the threshold  
       Serial.print(",");
       Serial.print(digitalRead(digitalPins[0]));
       Serial.print(",");
@@ -46,7 +46,7 @@ void RunSerialCom(int code) {
       Serial.print("*");
       break;
       
-    case 88: // trail ended and the trial details were requested              
+    case 88: // trial ended and the trial details were requested              
       // tell the monitor about the trial details
       Serial.print(4);
       Serial.print(",");
@@ -60,9 +60,9 @@ void RunSerialCom(int code) {
       Serial.print(",");
       Serial.print(firstLickTime);      
       Serial.print(",");
-      Serial.print(valveOpenTime);      
+      Serial.print(valveOpenTime); // valve open duration      
       Serial.print(",");
-      Serial.print(leftTrial);      
+      Serial.print(crossVelocity); // reach velocity measured at threshold crossing      
       Serial.print(",");
       Serial.print("*");
       break;
