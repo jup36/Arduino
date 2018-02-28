@@ -274,7 +274,8 @@ void loop() {
                   if (stimActive==true){ // if stim is not refractory
                    if (stimTrial==1){ // if current trial is a stim trial
                     digitalWrite(LASER, HIGH); // stimulate; LASER ON
-                    stimTime = time;    // mark stim activation time
+                     stimTrial = 0;     // turn the stim off to prevent continuous stims
+                     stimTime = time;   // mark stim activation time
                     stimActive = false; // make stim inactive to prevent continuous stim. 
                     //ParadigmMode = 1;   // returning back to paradigmmode 1 would prevent repeating laser stim for static low displacement            
                    } else { // if not a stim trial
