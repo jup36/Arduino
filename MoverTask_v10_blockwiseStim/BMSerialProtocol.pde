@@ -20,8 +20,8 @@ void sendSerialCode(int type) {
       // MUST BE A SINGLE BYTE (-127->128) FOR THIS TRANSFER SCHEME
       //port.clear();
       port.write(90);
-      port.write(0);            // available for future use
-      port.write(boundaryWidth);// available for future use
+      port.write(paramWave[0]); // stimTrial
+      port.write(paramWave[1]); // stimDelay
       port.write(paramWave[2]); // valveOpenTimeX
       port.write(paramWave[3]); // xCenter
       port.write(paramWave[4]); // xWidth
