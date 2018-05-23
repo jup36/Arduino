@@ -218,12 +218,12 @@ void loop() {
           CurrAIValue[0] = bufferAI0[bufferEndIndex]; 
           CurrAIValue[1] = bufferAI1[bufferEndIndex];
       }
-          //prevXDisp = int(( bufferAI0[0] + bufferAI0[1] + bufferAI0[2] ) / 3); // average of x samples - 3 samples back
-          //prevYDisp = int(( bufferAI1[0] + bufferAI1[1] + bufferAI1[2] ) / 3); // average of y samples - 3 samples back 
+          prevXDisp = int(( bufferAI0[0] + bufferAI0[1] + bufferAI0[2] ) / 3); // average of x samples - 3 samples back
+          prevYDisp = int(( bufferAI1[0] + bufferAI1[1] + bufferAI1[2] ) / 3); // average of y samples - 3 samples back 
 
-          //CurrAIValue[0] = analogRead(0); // gather new current x position
-          //CurrAIValue[1] = analogRead(1); // gather new current y position
-      CurrAIValue[3] = digitalRead(BEAM1);  // lick port
+          CurrAIValue[0] = analogRead(0); // gather new current x position
+          CurrAIValue[1] = analogRead(1); // gather new current y position
+          CurrAIValue[3] = digitalRead(BEAM1);  // lick port
 
        if(CurrAIValue[3]<lThresh) {
          digitalWrite(digitalPins[4], HIGH); // signal a lick
@@ -264,10 +264,12 @@ void loop() {
 
             switch(responseMode) {     
               case 0:
-                xDisp = abs(CurrAIValue[0]-jsZeroX);     // find X displacement of sample in relation to start of reach
-                yDisp = abs(CurrAIValue[1]-jsZeroY);     // find Y displacement of sample in relation to start of reach
-                //xDispS = abs(prevXDisp-jsZeroX);         // find X displacement of previous samples in relation to start of reach
-                //yDispS = abs(prevYDisp-jsZeroY);         // find Y displacement of previous samples in relation to start of reach
+                
+                xDispS = abs(prevXDisp-jsZeroX);         // find X displacement of previous samples in relation to start of reach
+                yDispS = abs(prevYDisp-jsZeroY);         // find Y displacement of previous samples in relation to start of reach
+
+                xDisp = abs(CurrAIValue[0]-xDispS);     // find X displacement of sample in relation to start of reach
+                yDisp = abs(CurrAIValue[1]-yDispS);     // find Y displacement of sample in relation to start of reach
 
                 if (xDisp>20 || yDisp>20) {  // if exceeds low velocity threshold and it is stimTrial 1                  
                   if (stimActive==true){ // if stim is not refractory

@@ -269,7 +269,7 @@ void loop() {
                 //xDispS = abs(prevXDisp-jsZeroX);         // find X displacement of previous samples in relation to start of reach
                 //yDispS = abs(prevYDisp-jsZeroY);         // find Y displacement of previous samples in relation to start of reach
 
-                if (xDisp>20 || yDisp>20) {  // if exceeds low velocity threshold and it is stimTrial 1                  
+                if (xDisp>10 || yDisp>10) {  // if exceeds low velocity threshold and it is stimTrial 1                  
                   if (stimActive==true){ // if stim is not refractory
                    if (stimTrial==1){ // if current trial is a stim trial
                     digitalWrite(LASER, HIGH); // stimulate; LASER ON
