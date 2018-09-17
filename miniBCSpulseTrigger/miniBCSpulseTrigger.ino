@@ -1,10 +1,7 @@
+//This code generates a high frequency pulse trains to trigger point grey camera image captures. 
+// DIO1 receives trialOffset TTL pulses that will terminate the ongoing pulse generation, which will be resumed after 3 sec (just by this time elapse). 
+// The trialOffset TTL pulse needs to be of 5V or smaller. By default, pulse generation will start with uploading of this script. 
 
-// ==============================================
-//  This is an example sketch for the miniBCS with Teensy 3.5
-//
-//  2017 HHMI Janelia Steve Sawtelle
-//
-// ===============================================
 #define VERSION "20170417"
 
 // VERSIONS
@@ -124,7 +121,6 @@ int relayState = 0;
 //======================
 //=== TASK VARIABLES ===
 //======================
-boolean firstTrial = true;
 boolean trialOffset = false;
 unsigned long trialOffsetTime = 0; // time when the trigger pulse turned off
 int sampleFreq = 300;  // video sampling frequency (default: 300 Hz)
@@ -166,8 +162,8 @@ void setup(void) {
   pinMode(MOSIpin, OUTPUT);
   pinMode(MISOpin, INPUT);
   pinMode(MAXCVTpin, OUTPUT);
-  pinMode(DIOports[0], OUTPUT); // DIO1 trigger pulse output channel
-  pinMode(DIOports[1], INPUT);  // DIO2 trial offset input channel
+  pinMode(DIOports[0], INPUT); // DIO1 trial offset input channel
+  //pinMode(DIOports[1], INPUT);  
   analogWriteFrequency(20, sampleFreq); // Teensy pin 20 set to 300 Hz
 
   // set the extra Digital I/Os to inputs
@@ -218,7 +214,7 @@ void loop() {
       break;
 
     case 1: // in this state, monitor the trialOffset signal
-      if ( digitalRead(DIO2) == true) {
+      if ( digitalRead(DIO1) == true) {
         trialOffset = true;
         trialOffsetTime = millis();
         analogWrite(20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
