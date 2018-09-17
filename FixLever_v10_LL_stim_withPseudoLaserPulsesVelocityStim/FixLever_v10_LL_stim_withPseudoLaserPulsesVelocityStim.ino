@@ -35,7 +35,7 @@ int digitalPins[] = {4,5,6,7,8,41,43,45,36,38,39,40}; // added digitalPin 3 that
 // Arrays that will hold the current values of the AO and DIO
 int CurrAIValue[] = {0,0,0,0};
 int aiThresh[] =  {512,512,512,512};
-int bufferLength = 100;
+int bufferLength = 5;
 int bufferEndIndex = bufferLength-1;
 int frozen=0;
 int first=0;
@@ -65,6 +65,8 @@ int yWidth = 10;
 int responseMode = 0;
 int leftTrial = 0;
 int valveDelayTmp = 0;
+int cntX = 0;
+int cntY = 0;
 
 //=======================
 
@@ -205,24 +207,20 @@ void loop() {
       beginLoopTime = micros();
       time = millis();         
 
-      if(frozen==0) {
         // Left shift the buffer
           for (int i=1;i<bufferLength;i++) { // i<bufferLength
             bufferAI0[i-1] = bufferAI0[i];
             bufferAI1[i-1] = bufferAI1[i];
           }
 
-          bufferAI0[bufferEndIndex] = int(analogRead(0)); // joystick x ... takes 110us
-          bufferAI1[bufferEndIndex] = int(analogRead(1)); // joystick y
-          
-          CurrAIValue[0] = bufferAI0[bufferEndIndex]; 
-          CurrAIValue[1] = bufferAI1[bufferEndIndex];
-      }
-          prevXDisp = int(( bufferAI0[0] + bufferAI0[1] + bufferAI0[2] ) / 3); // average of x samples - 3 samples back
-          prevYDisp = int(( bufferAI1[0] + bufferAI1[1] + bufferAI1[2] ) / 3); // average of y samples - 3 samples back 
+          bufferAI0[bufferEndIndex] = int(analogRead(0)-jsZeroX); // joystick x ... takes 110us
+          bufferAI1[bufferEndIndex] = int(analogRead(1)-jsZeroY); // joystick y
 
-          CurrAIValue[0] = analogRead(0); // gather new current x position
-          CurrAIValue[1] = analogRead(1); // gather new current y position
+          cntX = 0; // 
+          cntY = 0; // 
+
+          CurrAIValue[0] = bufferAI0[bufferEndIndex]; // gather new current x position
+          CurrAIValue[1] = bufferAI1[bufferEndIndex]; // gather new current y position
           CurrAIValue[3] = digitalRead(BEAM1);  // lick port
 
        if(CurrAIValue[3]<lThresh) {
@@ -246,8 +244,8 @@ void loop() {
             
         case 1: // if controller tells you to start, then start      
 
-            jsZeroX = CurrAIValue[0];
-            jsZeroY = CurrAIValue[1];
+//            jsZeroX = CurrAIValue[0];
+//            jsZeroY = CurrAIValue[1];
             trialStart = time;
             digitalWrite(digitalPins[0], HIGH); // trial cue light 4            
             digitalWrite(digitalPins[5], HIGH); // trial cue indicator to send to the recording system
@@ -265,13 +263,22 @@ void loop() {
             switch(responseMode) {     
               case 0:
                 
-                xDispS = abs(prevXDisp-jsZeroX);         // find X displacement of previous samples in relation to start of reach
-                yDispS = abs(prevYDisp-jsZeroY);         // find Y displacement of previous samples in relation to start of reach
+//                xDispS = abs(prevXDisp-jsZeroX);         // find X displacement of previous samples in relation to start of reach
+//                yDispS = abs(prevYDisp-jsZeroY);         // find Y displacement of previous samples in relation to start of reach
 
-                xDisp = abs(CurrAIValue[0]-xDispS);     // find X displacement of sample in relation to start of reach
-                yDisp = abs(CurrAIValue[1]-yDispS);     // find Y displacement of sample in relation to start of reach
+                xDisp = abs(CurrAIValue[0]);     // find X displacement of sample in relation to start of reach
+                yDisp = abs(CurrAIValue[1]);     // find Y displacement of sample in relation to start of reach
 
-                if (xDisp>20 || yDisp>20) {  // if exceeds low velocity threshold and it is stimTrial 1                  
+                for (int i=0;i<bufferLength;i++) { // i<bufferLength
+                  if (abs(bufferAI0[i])>xWidth) {
+                    cntX++;
+                  }
+                  if (abs(bufferAI1[i])>yWidth) {
+                    cntY++;
+                  }
+                }
+
+                if (cntX>=bufferEndIndex || cntY>=bufferEndIndex) {  // if exceeds low velocity threshold and it is stimTrial 1                  
                   if (stimActive==true){ // if stim is not refractory
                    if (stimTrial==1){ // if current trial is a stim trial
                     digitalWrite(LASER, HIGH); // stimulate; LASER ON
@@ -288,9 +295,9 @@ void loop() {
                   }
                 }
                  
-               if (xDisp>xWidth || yDisp>yWidth) {         // if moving out from center (make sure current sample is larger than previous)
+               if (cntX>=bufferEndIndex || cntY>=bufferEndIndex) {         // if moving out from center (make sure current sample is larger than previous)
                    crossTime = time;                             // mark cross time to check if the next buff samples go above upper threshold
-                   //success   = true;                             // for the time being, success = true
+                   //success   = true;                           // for the time being, success = true
 
                    frozen = 0;        
                    valveOpenTime = valveOpenTimeY;
