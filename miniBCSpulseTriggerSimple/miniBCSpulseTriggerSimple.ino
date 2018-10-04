@@ -126,7 +126,7 @@ unsigned long time; // all values that will do math with time need to be unsigne
 unsigned long trialOffsetTime = 0; // time when the trigger pulse turned off
 int sampleFreq = 300;  // video sampling frequency (default: 300 Hz)
 //int pulseWidth = 1;    // width of the trigger pulse (default: 1 ms)
-float dutyCycle; // duty cycle 256 equals to 100% duty cycle
+int dutyCycle  = floor(1 / (1000 / sampleFreq) * 256); // duty cycle 256 equals to 100% duty cycle
 int trigOffDur = 3000; // dur to keep the video capture off before it restarts the next capture
 int pulseState = 0;
 //unsigned long trigOnTime = 0; // trigger pulse train on time
@@ -193,8 +193,7 @@ void setup(void) {
   lcd.print(VERSION);
   lcd.refresh();
 #endif
-  
-  dutyCycle  = (1 / (1000 / sampleFreq) * 256); 
+
   lastMillis = micros();
 } // end of set up
 
@@ -205,14 +204,13 @@ uint16_t inputs;
 // ===  L O O P  ===
 // =================
 void loop() {
-  time = millis(); 
   switch (pulseState) {
     case 0: // in this state, turn on the trigger pulse
-      if ( trialOffset == false ) { // trial offset TTL
+      //if ( trialOffset == false ) { // trial offset TTL
         analogWrite(PIN20, 77); // use pin 20, duty cycle 77/256*100 = 30%
         Serial.println("PulseOn!");
-        pulseState = 1; // go to the trialOffset monitor state
-      }
+        //pulseState = 1; // go to the trialOffset monitor state
+      //}
       break;
 
     case 1: // in this state, monitor the trialOffset signal
