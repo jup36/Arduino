@@ -135,7 +135,6 @@ int pulseState = 0;
 //=== S E T U P  ===
 //==================
 
-
 void setup(void) {
   SPI.begin();     // set up SPI bus
 
@@ -144,9 +143,9 @@ void setup(void) {
   while (!Serial && ((millis () - serial_start) <= 2000));   // wait a bit for serial, but not forever if it is not connected
   Serial.println("Hello!");   // and test
 
-  pinMode(PB1pin, INPUT_PULLUP);  // set up pushbuttons
-  pinMode(PB2pin, INPUT_PULLUP);
-  pinMode(PB3pin, INPUT_PULLUP);
+  pinMode(PB1pin, INPUT_PULLUP); // go to the idle state
+  pinMode(PB2pin, INPUT_PULLUP); // escape the idle state 
+  //pinMode(PB3pin, INPUT_PULLUP);
 
   pinMode(IDSENSEpin, INPUT);   // will switch to analog in if needed
 
@@ -206,10 +205,16 @@ uint16_t inputs;
 // =================
 void loop() {
   time = millis(); 
+    if( digitalRead(PB1pin) == LOW ){ // low is pushed
+     Serial.println("PB1");
+     while( digitalRead(PB1pin) == LOW) delay(50); // wait until released
+     pulseState = 3; // go to the idle state 
+    }   
+  
   switch (pulseState) {
     case 0: // in this state, turn on the trigger pulse
       if ( trialOffset == false ) { // trial offset TTL
-        analogWrite(PIN20, 77); // use pin 20, duty cycle 77/256*100 = 30%
+        analogWrite(PIN20, 26); // use pin 20, duty cycle 77/256*100 = 30%
         Serial.println("PulseOn!");
         pulseState = 1; // go to the trialOffset monitor state
       }
@@ -230,6 +235,15 @@ void loop() {
         Serial.println("PulseOff!");
         trialOffset = false;     
         pulseState = 0;
+      }
+      break;
+
+    case 3: // idle state; 
+      analogWrite(PIN20, 0); // just idle in this state until reactivated by push button 2;
+      if( digitalRead(PB2pin) == LOW ){ // low is pushed
+        Serial.println("PB2");
+        while( digitalRead(PB2pin) == LOW) delay(50); // wait until released
+        pulseState = 1; // escape the idle state 
       }
       break;
   }
