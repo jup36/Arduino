@@ -149,6 +149,9 @@ void setup(void) {
 
   pinMode(IDSENSEpin, INPUT);   // will switch to analog in if needed
 
+  
+  digitalWrite(PB1pin, HIGH); // go to the idle state
+  digitalWrite(PB2pin, HIGH); // escape the idle state 
   digitalWrite(AUXCSpin, HIGH); // SPI setups
   //digitalWrite(LCDCSpin, HIGH);  // LCD chip select is opposite normal SPI
   digitalWrite(MAXCSpin, HIGH);
@@ -210,11 +213,17 @@ void loop() {
      while( digitalRead(PB1pin) == LOW) delay(50); // wait until released
      pulseState = 3; // go to the idle state 
     }   
+
+    if( pulseState == 3 && digitalRead(PB2pin) == LOW ){ // low is pushed
+     Serial.println("PB2");
+     while( digitalRead(PB2pin) == LOW) delay(50); // wait until released
+     pulseState = 0; // escape the idle state 
+    }
   
   switch (pulseState) {
     case 0: // in this state, turn on the trigger pulse
       if ( trialOffset == false ) { // trial offset TTL
-        analogWrite(PIN20, 26); // use pin 20, duty cycle 77/256*100 = 30%
+        analogWrite(PIN20, 77); // use pin 20, duty cycle 77/256*100 = 30%
         Serial.println("PulseOn!");
         pulseState = 1; // go to the trialOffset monitor state
       }
@@ -240,11 +249,6 @@ void loop() {
 
     case 3: // idle state; 
       analogWrite(PIN20, 0); // just idle in this state until reactivated by push button 2;
-      if( digitalRead(PB2pin) == LOW ){ // low is pushed
-        Serial.println("PB2");
-        while( digitalRead(PB2pin) == LOW) delay(50); // wait until released
-        pulseState = 1; // escape the idle state 
-      }
       break;
   }
 }
