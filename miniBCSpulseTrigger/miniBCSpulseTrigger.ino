@@ -122,12 +122,13 @@ int relayState = 0;
 //=== TASK VARIABLES ===
 //======================
 boolean trialOffset = false;
-unsigned long time; // all values that will do math with time need to be unsigned long datatype
+unsigned long time;   // all values that will do math with time need to be unsigned long datatype
 unsigned long trialOffsetTime = 0; // time when the trigger pulse turned off
-int sampleFreq = 300;  // video sampling frequency (default: 300 Hz)
+int sampleFreq = 300; // video sampling frequency (default: 300 Hz)
 //int pulseWidth = 1;    // width of the trigger pulse (default: 1 ms)
 float dutyCycle; // duty cycle 256 equals to 100% duty cycle
 int trigOffDur = 3000; // dur to keep the video capture off before it restarts the next capture
+int trigOffDelay = 1000; // dur to keep the pulses on after the trial end signal from the apparatus to capture the later part of the movement
 int pulseState = 0;
 //unsigned long trigOnTime = 0; // trigger pulse train on time
 
@@ -149,7 +150,6 @@ void setup(void) {
 
   pinMode(IDSENSEpin, INPUT);   // will switch to analog in if needed
 
-  
   digitalWrite(PB1pin, HIGH); // go to the idle state
   digitalWrite(PB2pin, HIGH); // escape the idle state 
   digitalWrite(AUXCSpin, HIGH); // SPI setups
@@ -166,6 +166,7 @@ void setup(void) {
   pinMode(MISOpin, INPUT);
   pinMode(MAXCVTpin, OUTPUT);
   pinMode(DIOports[0], INPUT); // DIO1 trial offset input channel
+  digitalWrite(DIOports[0], LOW);
   //pinMode(DIOports[1], INPUT);  
   analogWriteFrequency(PIN20, sampleFreq); // Teensy pin 20 set to 300 Hz
 
@@ -211,10 +212,10 @@ void loop() {
     if( digitalRead(PB1pin) == LOW ){ // low is pushed
      Serial.println("PB1");
      while( digitalRead(PB1pin) == LOW) delay(50); // wait until released
-     pulseState = 3; // go to the idle state 
+     pulseState = 4; // go to the idle state 
     }   
 
-    if( pulseState == 3 && digitalRead(PB2pin) == LOW ){ // low is pushed
+    if( pulseState == 4 && digitalRead(PB2pin) == LOW ){ // low is pushed
      Serial.println("PB2");
      while( digitalRead(PB2pin) == LOW) delay(50); // wait until released
      pulseState = 0; // escape the idle state 
@@ -233,21 +234,28 @@ void loop() {
       if ( digitalRead(DIO1) == true) {
         trialOffset = true;
         trialOffsetTime = millis();
-        analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
         pulseState = 2;
       }
       break;
 
-    case 2:
-      analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
-      if ( time > trialOffsetTime + trigOffDur) {
+    case 2: // in this stae, turn off the trigger pulses
+      if ( time > trialOffsetTime + trigOffDelay) {
+        analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
+        Serial.println("PulseOff!");
+        trialOffset = false;     
+        pulseState = 3;
+      }
+      break;
+
+    case 3: // in this state, monitor passage of trigger off duration
+      if ( time > trialOffsetTime + trigOffDelay + trigOffDur) {
+        analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
         Serial.println("PulseOff!");
         trialOffset = false;     
         pulseState = 0;
       }
-      break;
-
-    case 3: // idle state; 
+      
+    case 4: // idle state; 
       analogWrite(PIN20, 0); // just idle in this state until reactivated by push button 2;
       break;
   }
