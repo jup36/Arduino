@@ -167,6 +167,8 @@ void setup(void) {
   pinMode(MAXCVTpin, OUTPUT);
   pinMode(DIOports[0], INPUT); // DIO1 trial offset input channel
   digitalWrite(DIOports[0], LOW);
+  pinMode(DIOports[1], OUTPUT); // DIO2 pulse off output channel for BIAS (1 sec after the trial offset)
+  digitalWrite(DIOports[1], LOW); 
   //pinMode(DIOports[1], INPUT);  
   analogWriteFrequency(PIN20, sampleFreq); // Teensy pin 20 set to 300 Hz
 
@@ -241,6 +243,8 @@ void loop() {
     case 2: // in this stae, turn off the trigger pulses
       if ( time > trialOffsetTime + trigOffDelay) {
         analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
+        digitalWrite(DIO2, HIGH);
+        delay(10); 
         Serial.println("PulseOff!");
         trialOffset = false;     
         pulseState = 3;
@@ -248,6 +252,7 @@ void loop() {
       break;
 
     case 3: // in this state, monitor passage of trigger off duration
+      digitalWrite(DIO2, LOW);
       if ( time > trialOffsetTime + trigOffDelay + trigOffDur) {
         analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
         Serial.println("PulseOff!");
@@ -257,6 +262,7 @@ void loop() {
       
     case 4: // idle state; 
       analogWrite(PIN20, 0); // just idle in this state until reactivated by push button 2;
+      digitalWrite(DIOports[1], LOW);
       break;
   }
 }
