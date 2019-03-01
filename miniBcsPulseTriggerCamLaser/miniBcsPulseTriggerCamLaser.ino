@@ -1,6 +1,8 @@
 //This code generates a high frequency pulse trains to trigger point grey camera image captures. 
-// DIO1 receives trialOffset TTL pulses that will terminate the ongoing pulse generation, which will be resumed after 3 sec (just by this time elapse). 
-// The trialOffset TTL pulse needs to be of 5V or smaller. By default, pulse generation will start with uploading of this script. 
+// DIO1 receives trialOff TTL pulses that will terminate the ongoing pulse generation, which will be resumed after 3 sec (just by this time elapse). 
+// The trialOff TTL pulse needs to be of 5V or smaller. By default, pulse generation will start with uploading of this script. 
+// In a randomly selected trials, a 4000ms static pulse (DIO3) is generated to trigger laser. 
+// The laser pulse onset is synchronized with the onset of the camera trigger pulses (PIN20). 
 
 #define VERSION "20170417"
 
@@ -41,20 +43,20 @@
 #define MOSIpin   11  // SPI MOSI
 #define MISOpin   12  // SPI MISO
 #define SCLKpin   13  // SPI Clock
-#define A0pin     14  //  in A0, I/O 14, PWM
+#define A0pin     14  // Analog in A0, I/O 14, PWM
 #define PIN14     14
 #define DIO5      14
-#define A1pin     15  //  in A1, I/O 15
+#define A1pin     15  // Analog in A1, I/O 15
 #define PIN15     15
 #define DIO7      15
 #define SOL4pin   16  // Solenoid 4 pin
 #define Valve3pin   17  // Solenoid 3 pin
 #define LCDCSpin  18  // Chip Select for LCD
 #define AUXCSpin  19  // Chip Select for auxilliary connector
-//#define A6pin     20  //  in A6, IO 20
+//#define A6pin     20  // Analog in A6, IO 20
 #define PIN20     20
 #define DIO6      20
-#define A7pin     21  //  in A7, IO 21
+#define A7pin     21  // Analog in A7, IO 21
 #define PIN21     21
 #define DIO8      21
 #define Valve1pin   22  // Solenoid 1 pin
@@ -72,8 +74,8 @@
 #define PB3pin    34  // pushbutton 3
 #define IDXpin    35  // Encoder Index in
 #define DIO11     35
-#define AUX1pin   36  // Auxilliary I/O, , PWM for auxilliary connector
-#define aux2pin   37  // Auxilliary I/O, , PWM for auxilliary connector
+#define AUX1pin   36  // Auxilliary I/O, analog, PWM for auxilliary connector
+#define aux2pin   37  // Auxilliary I/O, analog, PWM for auxilliary connector
 #define LED1pin   38  // User LED output
 #define ETH39pin  39  // reserved for Ethernet
 
@@ -121,15 +123,20 @@ int relayState = 0;
 //======================
 //=== TASK VARIABLES ===
 //======================
-boolean trialOffset = false;
+boolean trialOff = false;
+
 unsigned long time;   // all values that will do math with time need to be unsigned long datatype
-unsigned long trialOffsetTime = 0; // time when the trigger pulse turned off
+unsigned long trialOffTime = 0; // time when the trigger pulse turned off
+unsigned long laserOnTime = 0; // time when the laser pulse goes on 
 int sampleFreq = 250; // video sampling frequency (default: 300 Hz)
 //int pulseWidth = 1;    // width of the trigger pulse (default: 1 ms)
 float dutyCycle; // duty cycle 256 equals to 100% duty cycle
 int trigOffDur = 3500; // dur to keep the video capture off before it restarts the next capture
-int trigOffDelay = 500; // dur to keep the pulses on after the trial end signal from the apparatus to capture the later part of the movement
+int trigOffDelay = 500;  // dur to keep the pulses on after the trial end signal from the apparatus to capture the later part of the movement
+int laserTrigDur = 4000; // laser duration 
+int randLaserEvery = 3; // random laser pulse generation frequency (every 5 trials, i.e., randomly 20% on average)
 int pulseState = 0;
+
 //unsigned long trigOnTime = 0; // trigger pulse train on time
 
 //==================
@@ -146,9 +153,9 @@ void setup(void) {
 
   pinMode(PB1pin, INPUT_PULLUP); // go to the idle state
   pinMode(PB2pin, INPUT_PULLUP); // escape the idle state 
-  //pinMode(PB3pin, INPUT_PULLUP);
+  //pinMode(PB3pin, INPUT_PULLUP); // the 3rd push button currently unused
 
-  pinMode(IDSENSEpin, INPUT);   // will switch to  in if needed
+  pinMode(IDSENSEpin, INPUT);   // will switch to analog in if needed
 
   digitalWrite(PB1pin, HIGH); // go to the idle state
   digitalWrite(PB2pin, HIGH); // escape the idle state 
@@ -168,9 +175,10 @@ void setup(void) {
   pinMode(DIOports[0], INPUT); // DIO1 trial offset input channel
   digitalWrite(DIOports[0], LOW);
   pinMode(DIOports[1], OUTPUT); // DIO2 pulse off output channel for BIAS (1 sec after the trial offset)
-  digitalWrite(DIOports[1], LOW); 
-  //pinMode(DIOports[1], INPUT);  
-  WriteFrequency(PIN20, sampleFreq); // Teensy pin 20 set to 300 Hz
+  digitalWrite(DIOports[1], LOW);
+  pinMode(DIOports[2], OUTPUT); // DIO3 triggers the laser on/off 
+  digitalWrite(DIOports[2], LOW); 
+  analogWriteFrequency(PIN20, sampleFreq); // Teensy pin 20 set to 250 Hz
 
   // set the extra Digital I/Os to inputs
   //for( int i = 0; i < 11; i++)
@@ -225,44 +233,54 @@ void loop() {
   
   switch (pulseState) {
     case 0: // in this state, turn on the trigger pulse
-      if ( trialOffset == false ) { // trial offset TTL
-        Write(PIN20, 77); // use pin 20, duty cycle 77/256*100 = 30%, 51/256*100 = 20%
+      if (trialOff == false && random(1,randLaserEvery+1)>(randLaserEvery-1)){ // this will ensure random laser on for every 5 trials on average
+         digitalWrite(DIO3, HIGH); // turn on the laser pulse
+         laserOnTime = millis(); // mark the laser on time
+      }      
+      if ( trialOff == false ) { // trial offset TTL
+        analogWrite(PIN20, 77); // use pin 20, duty cycle 77/256*100 = 30%, 51/256*100 = 20%
         Serial.println("PulseOn!");
-        pulseState = 1; // go to the trialOffset monitor state
+        pulseState = 1; // go to the trialOff monitor state
       }
       break;
 
-    case 1: // in this state, monitor the trialOffset signal
+    case 1: // in this state, monitor the trialOff signal
+      if ( digitalRead(DIO1) == true || time > laserOnTime + laserTrigDur ) {
+         digitalWrite(DIO3, LOW); // turn off the laser pulse
+      }
       if ( digitalRead(DIO1) == true) {
-        trialOffset = true;
-        trialOffsetTime = millis();
+        trialOff = true;
+        trialOffTime = millis();
         pulseState = 2;
       }
       break;
 
     case 2: // in this state, turn off the trigger pulses after passage of trigOffDelay (e.g. 1000ms)
-      if ( time > trialOffsetTime + trigOffDelay) {
-        Write(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
-        digitalWrite(DIO2, HIGH);
+      if ( time > trialOffTime + trigOffDelay) {
+        analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
+        digitalWrite(DIO2, HIGH); // generate a pulse to stop BIAS 
+        digitalWrite(DIO3, LOW);  // keep the laser off
         delay(30); 
         Serial.println("PulseOff!");
-        trialOffset = false;     
+        trialOff = false;     
         pulseState = 3;
       }
       break;
 
     case 3: // in this state, monitor passage of trigger off duration
       digitalWrite(DIO2, LOW);
-      if ( time > trialOffsetTime + trigOffDelay + trigOffDur) {
-        Write(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
+      if ( time > trialOffTime + trigOffDelay + trigOffDur) {
+        analogWrite(PIN20, 0);   // keep the cam trigger pulse off;
+        digitalWrite(DIO3, LOW); // keep the laser off
         Serial.println("PulseOff!");
-        trialOffset = false;     
+        trialOff = false;     
         pulseState = 0;
       }
       
     case 4: // idle state; 
-      Write(PIN20, 0); // just idle in this state until reactivated by push button 2;
-      digitalWrite(DIOports[1], LOW);
+      analogWrite(PIN20, 0);   // just idle in this state until reactivated by push button 2;
+      digitalWrite(DIO2, LOW); // keep the BIAS stop pulse off
+      digitalWrite(DIO3, LOW); // keep the lasers pulse off
       break;
   }
 }

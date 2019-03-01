@@ -163,8 +163,8 @@ void setup(void) {
   pinMode(MOSIpin, OUTPUT);
   pinMode(MISOpin, INPUT);
   pinMode(MAXCVTpin, OUTPUT);
-  pinMode(DIOports[0], INPUT); // DIO1 trial offset input channel
-  //pinMode(DIOports[1], INPUT);  
+  pinMode(DIOports[0], INPUT);   // DIO1 trial offset input channel
+  pinMode(DIOports[2], OUTPUT);  // DIO3 as an output to trigger laser 
   analogWriteFrequency(PIN20, sampleFreq); // Teensy pin 20 set to 300 Hz
 
   // set the extra Digital I/Os to inputs
@@ -204,26 +204,30 @@ uint16_t inputs;
 // ===  L O O P  ===
 // =================
 void loop() {
+  time = millis();
   switch (pulseState) {
     case 0: // in this state, turn on the trigger pulse
-      //if ( trialOffset == false ) { // trial offset TTL
-        analogWrite(PIN20, 77); // use pin 20, duty cycle 77/256*100 = 30%
+      if ( trialOffset == false ) { // trial offset TTL
+        digitalWrite(DIO3, HIGH); //analogWrite(PIN20, 77); // use pin 20, duty cycle 77/256*100 = 30%
         Serial.println("PulseOn!");
-        //pulseState = 1; // go to the trialOffset monitor state
-      //}
+        pulseState = 1; // go to the trialOffset monitor state
+      }
       break;
 
     case 1: // in this state, monitor the trialOffset signal
       if ( digitalRead(DIO1) == true) {
         trialOffset = true;
         trialOffsetTime = millis();
-        analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
+        digitalWrite(DIO3, LOW);//analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
         pulseState = 2;
+      }
+      else {
+       digitalWrite(DIO3, HIGH);//analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
       }
       break;
 
     case 2:
-      analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
+      digitalWrite(DIO3, LOW); //analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
       if ( time > trialOffsetTime + trigOffDur) {
         Serial.println("PulseOff!");
         trialOffset = false;     
