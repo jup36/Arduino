@@ -2,6 +2,7 @@
 // DIO1 receives trialOff TTL pulses that will terminate the ongoing pulse generation, which will be resumed after 3 sec (just by this time elapse). 
 // The trialOff TTL pulse needs to be of 5V or smaller. By default, pulse generation will start with uploading of this script. 
 // This scrips only differs its precedent "miniBcsPulseTriggerCamLaser.ino" in which the laser is concurrently turned on with the cam trigger, the laser onsets 3-sec after the cam trigger onset here. 
+// Modified on 5/1/19 to include pseudoLaser pulse to make time alignments in data analysis easier. 
 
 #define VERSION "20170417"
 
@@ -180,6 +181,9 @@ void setup(void) {
   digitalWrite(DIOports[1], LOW);
   pinMode(DIOports[2], OUTPUT); // DIO3 triggers the laser on/off 
   digitalWrite(DIOports[2], LOW); 
+  pinMode(DIOports[3], OUTPUT); // DIO4 triggers the pseudolaser on/off 
+  digitalWrite(DIOports[3], LOW); 
+  
   analogWriteFrequency(PIN20, sampleFreq); // Teensy pin 20 set to 250 Hz
 
   // set the extra Digital I/Os to inputs
@@ -245,14 +249,26 @@ void loop() {
       break;
       
     case 1: // in this state, monitor the trialOff signal
-      if ( laserOn == false && trialOff == false && time > camOnTime+laserDelay && turnLaserOn ) { // this will ensure random laser on for every 3 trials on average
-         digitalWrite(DIO3, HIGH); // turn off the laser pulse
-         laserOnTime = millis(); // mark the laser on time
-         laserOn = true; // boolean indicator for the laser status
+      if (turnLaserOn==true) { 
+        if ( laserOn == false && trialOff == false && time > camOnTime+laserDelay) { // this will ensure random laser on for every 3 trials on average
+          digitalWrite(DIO3, HIGH); // turn on the laser pulse
+          laserOnTime = millis(); // mark the laser on time
+          laserOn = true; // boolean indicator for the laser status
+        }
+        if ( laserOn == true && trialOff == false && time > laserOnTime+laserTrigDur ){
+          digitalWrite(DIO3, LOW); // turn off the laser pulse when the laserTrigDur's up 
+        }
       }
-      if ( laserOn == true && trialOff == false && time > laserOnTime+laserTrigDur ){
-         digitalWrite(DIO3, LOW); // turn off the laser pulse when the laserTrigDur's up 
-      }
+      else {
+        if ( laserOn == false && trialOff == false && time > camOnTime+laserDelay) { // this will ensure random laser on for every 3 trials on average
+          digitalWrite(DIO4, HIGH); // turn on the pseudolaser pulse
+          laserOnTime = millis(); // mark the laser on time
+          laserOn = true; // boolean indicator for the laser status
+        }
+        if ( laserOn == true && trialOff == false && time > laserOnTime+laserTrigDur ){
+          digitalWrite(DIO4, LOW); // turn off the pseudolaser pulse when the laserTrigDur's up 
+        }        
+      }      
       if ( digitalRead(DIO1) == true) {
         trialOff = true;
         trialOffTime = millis();
@@ -265,7 +281,8 @@ void loop() {
         analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
         digitalWrite(DIO2, HIGH); // generate a pulse to stop BIAS 
         digitalWrite(DIO3, LOW);  // keep the laser off
-        delay(30); 
+        digitalWrite(DIO4, LOW);  // keep the pseudolaser off
+        delay(50); 
         Serial.println("PulseOff!");
         trialOff = false;     
         laserOn = false; 
@@ -278,6 +295,7 @@ void loop() {
       if ( time > trialOffTime + trigOffDelay + trigOffDur) {
         analogWrite(PIN20, 0);   // keep the cam trigger pulse off;
         digitalWrite(DIO3, LOW); // keep the laser off
+        digitalWrite(DIO4, LOW); // keep the pseudolaser off
         Serial.println("PulseOff!");
         trialOff = false;     
         pulseState = 0;
@@ -287,6 +305,7 @@ void loop() {
       analogWrite(PIN20, 0);   // just idle in this state until reactivated by push button 2;
       digitalWrite(DIO2, LOW); // keep the BIAS stop pulse off
       digitalWrite(DIO3, LOW); // keep the lasers pulse off
+      digitalWrite(DIO4, LOW); // keep the pseudolaser off
       break;
   }
 }

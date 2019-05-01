@@ -170,7 +170,7 @@ void setup(void) {
   pinMode(DIOports[1], OUTPUT); // DIO2 pulse off output channel for BIAS (1 sec after the trial offset)
   digitalWrite(DIOports[1], LOW); 
   //pinMode(DIOports[1], INPUT);  
-  WriteFrequency(PIN20, sampleFreq); // Teensy pin 20 set to 300 Hz
+  analogWriteFrequency(PIN20, sampleFreq); // Teensy pin 20 set to 300 Hz
 
   // set the extra Digital I/Os to inputs
   //for( int i = 0; i < 11; i++)
@@ -226,7 +226,7 @@ void loop() {
   switch (pulseState) {
     case 0: // in this state, turn on the trigger pulse
       if ( trialOffset == false ) { // trial offset TTL
-        Write(PIN20, 77); // use pin 20, duty cycle 77/256*100 = 30%, 51/256*100 = 20%
+        analogWrite(PIN20, 77); // use pin 20, duty cycle 77/256*100 = 30%, 51/256*100 = 20%
         Serial.println("PulseOn!");
         pulseState = 1; // go to the trialOffset monitor state
       }
@@ -242,9 +242,9 @@ void loop() {
 
     case 2: // in this state, turn off the trigger pulses after passage of trigOffDelay (e.g. 1000ms)
       if ( time > trialOffsetTime + trigOffDelay) {
-        Write(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
+        analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
         digitalWrite(DIO2, HIGH);
-        delay(30); 
+        delay(50); 
         Serial.println("PulseOff!");
         trialOffset = false;     
         pulseState = 3;
@@ -254,14 +254,14 @@ void loop() {
     case 3: // in this state, monitor passage of trigger off duration
       digitalWrite(DIO2, LOW);
       if ( time > trialOffsetTime + trigOffDelay + trigOffDur) {
-        Write(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
+        analogWrite(PIN20, 0); // turn off the trigger pulse or digitalWrite(20, LOW);
         Serial.println("PulseOff!");
         trialOffset = false;     
         pulseState = 0;
       }
       
     case 4: // idle state; 
-      Write(PIN20, 0); // just idle in this state until reactivated by push button 2;
+     analogWrite(PIN20, 0); // just idle in this state until reactivated by push button 2;
       digitalWrite(DIOports[1], LOW);
       break;
   }
