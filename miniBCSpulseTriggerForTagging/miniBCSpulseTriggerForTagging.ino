@@ -121,9 +121,9 @@ boolean pulseOff = false;
 unsigned long time; // all values that will do math with time need to be unsigned long datatype
 unsigned long pulseOnTime = 0; // time when the laser pulse turned on
 int tagPulseITI = 6000; // tag stimulation iti
-int tagPulseDur = 1000; // tag pulse duration
+int tagPulseDur = 5000; // tag pulse duration
 int tagPulseCnt = 0;    // count of pulses generated
-int totNumbPulses = 50;  // total number of pulses to be generated 
+int totNumbPulses = 20;  // total number of pulses to be generated 
 int pulseState = 0;
 //unsigned long trigOnTime = 0; // trigger pulse train on time
 
